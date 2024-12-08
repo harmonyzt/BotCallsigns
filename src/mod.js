@@ -12,8 +12,8 @@ class BotNames {
         const bot = db.getTables().bots.types;
         const bearNames = this.bearCFG['Names'];
         const usecNames = this.usecCFG['Names'];
-        bot["bear"].firstName = bot["bear"].firstName;
-        bot["usec"].firstName = bot["bear"].firstName;
+        bot["bear"].firstName = bearNames;
+        bot["usec"].firstName = usecNames;
         logger.info("Bot names loaded!");
     }
 }
