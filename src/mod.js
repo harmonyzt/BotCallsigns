@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const namesConfig = require("../config/config.jsonc");
 
 class BotNames {
     bearCFG = require("../names/bear.json"); 
