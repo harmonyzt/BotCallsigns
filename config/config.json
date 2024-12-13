@@ -1,3 +1,4 @@
 {
-    "useCustomScavNames": false
+    "useCustomScavNames": false,
+    "liveMode": false
 }
