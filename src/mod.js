@@ -1,5 +1,4 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require('fs');
 
 class BotNames {
@@ -9,28 +8,29 @@ class BotNames {
     scavNames = require("../names/scav.json");
 
     postDBLoad(container) {
-        // Get the logger from the server container.
         const logger = container.resolve("WinstonLogger");
-        // Get database from server.
         const db = container.resolve("DatabaseServer");
         const bot = db.getTables().bots.types;
+
         const bearNames = this.bearNames['Names'];
         const usecNames = this.usecNames['Names'];
         bot["bear"].firstName = bearNames;
         bot["usec"].firstName = usecNames;
 
+        // Handle live mode functionality.
         if (this.CFG.liveMode) {
             logger.log("[BotCallsigns | LIVE MODE] Live mode is ENABLED! This will generate a new file with all names for TTV Players every server start up. Be careful!", "yellow");
-            // Generating a file with ALL the BEAR and USEC names if the mod we support exists.
+
             const pathToTTVPlayers = "./user/mods/TTV-Players";
             if (fs.existsSync(pathToTTVPlayers)) {
-                var BEARStr = new Array(this.bearNames['Names']);
-                var USECStr = new Array(this.usecNames['Names']);
-                var allthenames = BEARStr.concat(USECStr);
+                const allNames = [...bearNames, ...usecNames];
 
                 const pathToAllNames = "./user/mods/TTV-Players/names/names.json";
-                fs.writeFile(pathToAllNames, JSON.stringify({ names: allthenames.flat() }, null, 2), (err) => {
-                    if (err) throw err;
+                fs.writeFile(pathToAllNames, JSON.stringify({ names: allNames }, null, 2), (err) => {
+                    if (err) {
+                        logger.error(`[BotCallsigns | LIVE MODE] Failed to write names.json: ${err.message}`);
+                        return;
+                    }
                     logger.log("[BotCallsigns | LIVE MODE] names.json for TTV Players mod was updated successfully!", "yellow");
                 });
             } else {
@@ -38,7 +38,8 @@ class BotNames {
                 return;
             }
         }
-        // If we should use custom SCAV names too.
+
+        // Load custom SCAV names if enabled.
         if (this.CFG.useCustomScavNames) {
             const scavFirstNames = this.scavNames['firstNames'];
             const scavLastNames = this.scavNames['lastNames'];
@@ -50,5 +51,5 @@ class BotNames {
         logger.info("[BotCallsigns] Custom PMC names loaded!");
     }
 }
+
 module.exports = { mod: new BotNames() };
-//# sourceMappingURL=mod.js.map
