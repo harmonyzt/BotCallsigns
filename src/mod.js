@@ -31,24 +31,25 @@ class BotNames {
                         logger.error(`[BotCallsigns | LIVE MODE] Failed to write names.json: ${err.message}`);
                         return;
                     }
-                    logger.log("[BotCallsigns | LIVE MODE] names.json for TTV Players mod was updated successfully!", "yellow");
+                    logger.log("[BotCallsigns | LIVE MODE] names.json file for TTV Players mod was updated successfully!", "green");
                 });
             } else {
-                logger.log("[BotCallsigns | LIVE MODE] Could not find TTV Players mod while live mode is enabled! Stopping the mod...", "red");
+                logger.log("[BotCallsigns | LIVE MODE] Couldn't find TTV Players mod installed. BotCallsings will NOT work. DISABLE LIVE MODE FOR THIS MOD IN CONFIG.JSON!", "red");
                 return;
             }
         }
 
         // Load custom SCAV names if enabled.
         if (this.CFG.useCustomScavNames) {
-            const scavFirstNames = this.scavNames['firstNames'];
-            const scavLastNames = this.scavNames['lastNames'];
-            bot["assault"].firstName = scavFirstNames;
-            bot["assault"].lastName = scavLastNames;
-            logger.info("[BotCallsigns] Custom SCAV names loaded!");
+            Object.assign(bot["assault"], {
+                firstName: this.scavNames['firstNames'],
+                lastName: this.scavNames['lastNames']
+            });
+            
+            logger.log(`[BotCallsigns] Loaded ${scavFirstNames.length} SCAV first names and ${scavLastNames.length} last names`, "green");
         }
 
-        logger.info("[BotCallsigns] Custom PMC names loaded!");
+        logger.log(`[BotCallsigns] Loaded ${bearNames.length} BEAR and ${usecNames.length} USEC names`, "green");
     }
 }
 
