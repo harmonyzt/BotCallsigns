@@ -12,12 +12,34 @@ class BotNames {
         const db = container.resolve("DatabaseServer");
         const bot = db.getTables().bots.types;
 
-        const bearNames = this.bearNames['Names'];
-        const usecNames = this.usecNames['Names'];
+        // Check for invalid names in the file.
+        function validateNames(names, type, logger) {
+            const validNamePattern = /^[\p{L}\p{N}\-_!@ ]+(?:\.[\p{L}\p{N}\-_!@ ]+)*$/u;
+            const validNames = [];
+            const invalidNames = [];
+
+            names.forEach(name => {
+                if (validNamePattern.test(name)) {
+                    validNames.push(name);
+                } else {
+                    invalidNames.push(name);
+                }
+            });
+
+            if (invalidNames.length > 0) {
+                logger.log(`[BotCallsigns] ${type}: Found incorrect names!: ${invalidNames.join(", ")}`, "yellow");
+            }
+
+            return validNames;
+        }
+
+        // Let's load these bad boys in.
+        const bearNames = validateNames(this.bearNames['Names'], "BEAR", logger);
+        const usecNames = validateNames(this.usecNames['Names'], "USEC", logger);
         bot["bear"].firstName = bearNames;
         bot["usec"].firstName = usecNames;
 
-        // Handle live mode functionality.
+        // Live Mode for TTV Players mod.
         if (this.CFG.liveMode) {
             logger.log("[BotCallsigns | LIVE MODE] Live mode is ENABLED! This will generate a new file with all names for TTV Players every server start up. Be careful!", "yellow");
 
@@ -41,15 +63,18 @@ class BotNames {
 
         // Load custom SCAV names if enabled.
         if (this.CFG.useCustomScavNames) {
+            const scavFirstNames = validateNames(this.scavNames['firstNames'], "SCAV First Names", logger);
+            const scavLastNames = validateNames(this.scavNames['lastNames'], "SCAV Last Names", logger);
+
             Object.assign(bot["assault"], {
-                firstName: this.scavNames['firstNames'],
-                lastName: this.scavNames['lastNames']
+                firstName: scavFirstNames,
+                lastName: scavLastNames
             });
-            
+
             logger.log(`[BotCallsigns] Loaded ${scavFirstNames.length} SCAV first names and ${scavLastNames.length} last names`, "green");
         }
 
-        logger.log(`[BotCallsigns] Loaded ${bearNames.length} BEAR and ${usecNames.length} USEC names`, "green");
+        logger.log(`[BotCallsigns] Loaded ${bearNames.length} BEAR and ${usecNames.length} USEC names!`, "green");
     }
 }
 
