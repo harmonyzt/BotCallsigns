@@ -11,6 +11,7 @@ class BotNames {
         const logger = container.resolve("WinstonLogger");
         const db = container.resolve("DatabaseServer");
         const bot = db.getTables().bots.types;
+        const config = this.CFG;
 
         // Check for invalid names in the file.
         function validateNames(names, type, logger) {
@@ -26,8 +27,8 @@ class BotNames {
                 }
             });
 
-            if (invalidNames.length > 0) {
-                logger.log(`[BotCallsigns] ${type}: Found incorrect names!: ${invalidNames.join(", ")}`, "yellow");
+            if (invalidNames.length > 0 && config.logInvalidNames) {
+                logger.log(`[BotCallsigns] ${type}: Found incorrect names!: ${invalidNames.join(", ")} | But that's okay! We skipped them!`, "yellow");
             }
 
             return validNames;
@@ -40,7 +41,7 @@ class BotNames {
         bot["usec"].firstName = usecNames;
 
         // Live Mode for TTV Players mod.
-        if (this.CFG.liveMode) {
+        if (config.liveMode) {
             logger.log("[BotCallsigns | LIVE MODE] Live mode is ENABLED! This will generate a new file with all names for TTV Players every server start up. Be careful!", "yellow");
 
             const pathToTTVPlayers = "./user/mods/TTV-Players";
@@ -62,7 +63,7 @@ class BotNames {
         }
 
         // Load custom SCAV names if enabled.
-        if (this.CFG.useCustomScavNames) {
+        if (config.useCustomScavNames) {
             const scavFirstNames = validateNames(this.scavNames['firstNames'], "SCAV First Names", logger);
             const scavLastNames = validateNames(this.scavNames['lastNames'], "SCAV Last Names", logger);
 
