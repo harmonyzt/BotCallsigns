@@ -15,6 +15,7 @@ class BotNames {
 
         // Check for invalid names in the file.
         function validateNames(names, type, logger) {
+            // Born of madness. Tested by fire. God forgive me. It shall validate.
             const validNamePattern = /^[\p{L}\p{N}\-_!@ ]+(?:\.[\p{L}\p{N}\-_!@ ]+)*$/u;
             const validNames = [];
             const invalidNames = [];
@@ -42,22 +43,22 @@ class BotNames {
 
         // Live Mode for TTV Players mod.
         if (config.liveMode) {
-            logger.log("[BotCallsigns | LIVE MODE] Live mode is ENABLED! This will generate a new file with all names for TTV Players every server start up. Be careful!", "yellow");
+            logger.log("[BotCallsigns | LIVE MODE] Live mode is ENABLED! This will generate a new file with all names for TTV Players every server start up. Be careful as it will take longer for SPT Server to boot!", "yellow");
 
             const pathToTTVPlayers = "./user/mods/TTV-Players";
             if (fs.existsSync(pathToTTVPlayers)) {
                 const allNames = [...bearNames, ...usecNames];
 
-                const pathToAllNames = "./user/mods/TTV-Players/names/names.json";
+                const pathToAllNames = "./user/mods/TTV-Players/temp/names_temp.json";
                 fs.writeFile(pathToAllNames, JSON.stringify({ names: allNames }, null, 2), (err) => {
                     if (err) {
-                        logger.error(`[BotCallsigns | LIVE MODE] Failed to write names.json: ${err.message}`);
+                        logger.log(`[BotCallsigns | LIVE MODE] Failed to write names_temp.json. Make sure Live mode is also enabled for BotCallsigns`, "red");
                         return;
                     }
-                    logger.log("[BotCallsigns | LIVE MODE] names.json file for TTV Players mod was updated successfully!", "green");
+                    logger.log("[BotCallsigns | LIVE MODE] names_temp.json file for TTV Players mod was updated successfully!", "green");
                 });
             } else {
-                logger.log("[BotCallsigns | LIVE MODE] Couldn't find TTV Players mod installed. BotCallsings will NOT work. DISABLE LIVE MODE FOR THIS MOD IN CONFIG.JSON!", "red");
+                logger.log("[BotCallsigns | LIVE MODE] Couldn't find TTV Players mod installed. BotCallsings will NOT work with Live Mode enabled. DISABLE it in the config or INSTALL TTV Players mod!", "red");
                 return;
             }
         }
