@@ -15,7 +15,7 @@ class BotNames {
 
         // Check for invalid names in the file.
         function validateNames(names, type, logger) {
-            // Born of madness. Tested by fire. God forgive me. It shall validate.
+            // A child of pure cruelty.. Madness. Tested by fire and wielded by the satan himself. God forgive me for this, it shall validate.
             const validNamePattern = /^[\p{L}\p{N}\-_!@ ]+(?:\.[\p{L}\p{N}\-_!@ ]+)*$/u;
             const validNames = [];
             const invalidNames = [];
