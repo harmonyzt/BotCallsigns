@@ -50,12 +50,21 @@ class BotNames {
                 const allNames = [...bearNames, ...usecNames];
 
                 const pathToAllNames = "./user/mods/TTV-Players/temp/names_temp.json";
+                const pathToFlag = "./user/mods/TTV-Players/temp/names.ready";
                 fs.writeFile(pathToAllNames, JSON.stringify({ names: allNames }, null, 2), (err) => {
                     if (err) {
                         logger.log(`[BotCallsigns | LIVE MODE] Failed to write names_temp.json. Make sure Live mode is also enabled for BotCallsigns`, "red");
                         return;
                     }
                     logger.log("[BotCallsigns | LIVE MODE] names_temp.json file for TTV Players mod was updated successfully!", "green");
+                    fs.writeFile(pathToFlag, '', (err) => {
+                        if (err) {
+                            logger.log("[BotCallsigns | LIVE MODE] Error creating names.ready file for TTV Players. Report this error to the developer!", "red");
+                            return;
+                        } else {
+                          logger.log("[BotCallsigns | LIVE MODE] Created flag for TTV Players that the file is ready!", "yellow");
+                        }
+                      });
                 });
             } else {
                 logger.log("[BotCallsigns | LIVE MODE] Couldn't find TTV Players mod installed. BotCallsings will NOT work with Live Mode enabled. DISABLE it in the config or INSTALL TTV Players mod!", "red");
