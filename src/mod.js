@@ -43,7 +43,7 @@ class BotNames {
 
         // Live Mode for TTV Players mod.
         if (config.liveMode) {
-            logger.log("[BotCallsigns | LIVE MODE] Live mode is ENABLED! This will generate a new file with all names for TTV Players every server start up. Be careful as it will take longer for SPT Server to boot!", "yellow");
+            logger.log("[BotCallsigns | LIVE MODE] Live mode is ENABLED! Generating new file with names for Twitch Players. Mod will do this every server start up. Be careful as it will take longer for SPT Server to boot!", "yellow");
 
             const pathToTTVPlayers = "./user/mods/TTV-Players";
             if (fs.existsSync(pathToTTVPlayers)) {
@@ -53,21 +53,21 @@ class BotNames {
                 const pathToFlag = "./user/mods/TTV-Players/temp/names.ready";
                 fs.writeFile(pathToAllNames, JSON.stringify({ names: allNames }, null, 2), (err) => {
                     if (err) {
-                        logger.log(`[BotCallsigns | LIVE MODE] Failed to write names_temp.json. Make sure Live mode is also enabled for BotCallsigns`, "red");
+                        logger.log(`[BotCallsigns | LIVE MODE] Failed to write names_temp.json. Make sure Live Mode is also enabled for BotCallsigns`, "red");
                         return;
                     }
-                    logger.log("[BotCallsigns | LIVE MODE] names_temp.json file for TTV Players mod was updated successfully!", "green");
+                    logger.log("[BotCallsigns | LIVE MODE] names_temp.json file for Twitch Players mod was updated successfully!", "green");
                     fs.writeFile(pathToFlag, '', (err) => {
                         if (err) {
-                            logger.log("[BotCallsigns | LIVE MODE] Error creating names.ready file for TTV Players. Report this error to the developer!", "red");
+                            logger.log("[BotCallsigns | LIVE MODE] Error creating names.ready file for Twitch Players mod. Report this error to the developer!", "red");
                             return;
                         } else {
-                          logger.log("[BotCallsigns | LIVE MODE] Created flag for TTV Players that the file is ready!", "yellow");
+                          logger.log("[BotCallsigns | LIVE MODE] Created flag for Twitch Players mod. Our file is ready!", "green");
                         }
                       });
                 });
             } else {
-                logger.log("[BotCallsigns | LIVE MODE] Couldn't find TTV Players mod installed. BotCallsings will NOT work with Live Mode enabled. DISABLE it in the config or INSTALL TTV Players mod!", "red");
+                logger.log("[BotCallsigns | LIVE MODE] Couldn't find Twitch Players mod installed. BotCallsings will NOT work with Live Mode enabled. DISABLE it in the config or INSTALL Twitch Players mod!", "red");
                 return;
             }
         }
