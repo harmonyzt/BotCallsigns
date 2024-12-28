@@ -1,5 +1,5 @@
 {
+    "validateNames": true,
     "useCustomScavNames": false,
-    "liveMode": false,
-    "logInvalidNames": false
+    "liveMode": false
 }
