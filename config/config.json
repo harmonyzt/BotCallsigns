@@ -1,5 +1,7 @@
 {
     "validateNames": true,
     "useCustomScavNames": false,
+    "useBEARCyrillicNames": false,
+    "useUSECEnglishNames": false,
     "liveMode": false
 }
