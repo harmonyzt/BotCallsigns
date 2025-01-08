@@ -9,13 +9,10 @@ class BotNames {
             ? require("../names/bear_cyrillic.json")
             : require("../names/bear.json");
         this.usecNames = this.CFG.useUSECEnglishNames
-        ? require("../names/usec_en.json")
-        : require("../names/usec.json");
-        this.scavNames = require("../names/scav.json");
+            ? require("../names/usec_en.json")
+            : require("../names/usec.json");
+        this.scavNames = require("../config/scav_names.json");
     }
-
-    usecNames = require("../names/usec.json");
-    scavNames = require("../names/scav.json");
 
     postDBLoad(container) {
         const logger = container.resolve("WinstonLogger");
@@ -23,9 +20,27 @@ class BotNames {
         const bot = db.getTables().bots.types;
         const config = this.CFG;
 
-        // Check for invalid names in the file.
-        function validateNames(names, type, logger) {
-            // A child of pure cruelty.. Madness. Tested by fire and wielded by the satan himself. God forgive me for this, it shall validate.
+        const extraUSECNamesPath = "./user/mods/BotCallsigns/config/usec_extra_names.json";
+        const extraBEARNamesPath = "./user/mods/BotCallsigns/config/bear_extra_names.json";
+
+        // Check for extra name files and create them
+        function createFileIfNotExists(path) {
+            if (!fs.existsSync(path)) {
+                const defaultStructure = { "Names": ["names_goes", "goes_here"] };
+                try {
+                    fs.writeFileSync(path, JSON.stringify(defaultStructure, null, 2));
+                    logger.log(`[BotCallsigns] Created missing extra names file: ${path}`, "cyan");
+                } catch (error) {
+                    logger.log(`[BotCallsigns] Failed to create file: ${path}`, "red");
+                }
+            }
+        }
+
+        createFileIfNotExists(extraUSECNamesPath);
+        createFileIfNotExists(extraBEARNamesPath);
+
+        // Name validation
+        function validateNames(names, type) {
             const validNamePattern = /^[\p{L}\p{N}\-_!@ #]+(?:\.[\p{L}\p{N}\-_!@ ]+)*$/u;
             const validNames = [];
             const invalidNames = [];
@@ -47,62 +62,69 @@ class BotNames {
             return validNames;
         }
 
-        // Let's load these bad boys in.
-        if(config.validateNames){
+        // Extra names loading
+        function loadExtraNames(path, defaultNames, type) {
+            if (fs.existsSync(path)) {
+                try {
+                    const fileContent = fs.readFileSync(path, "utf-8");
+                    const extraNames = JSON.parse(fileContent).Names;
+                    logger.log(`[BotCallsigns] Loaded extra ${type} names from ${path}`, "green");
+                    return [...defaultNames, ...extraNames];
+                } catch (error) {
+                    logger.log(`[BotCallsigns] Failed to load extra ${type} names from ${path}`, "red");
+                }
+            }
+            return defaultNames;
+        }
+
+        if(config.addExtraNames){
+            this.bearNames.Names = loadExtraNames(extraBEARNamesPath, this.bearNames.Names, "BEAR", logger);
+            this.usecNames.Names = loadExtraNames(extraUSECNamesPath, this.usecNames.Names, "USEC", logger);
+        }
+
+        // Name Validation if enabled in the config
+        if (config.validateNames) {
             logger.log("[BotCallsigns] Validating BEAR and USEC names...", "green");
-            const bearNames = validateNames(this.bearNames['Names'], "BEAR", logger);
-            const usecNames = validateNames(this.usecNames['Names'], "USEC", logger);
+            const bearNames = validateNames(this.bearNames.Names, "BEAR", logger);
+            const usecNames = validateNames(this.usecNames.Names, "USEC", logger);
 
             bot["bear"].firstName = bearNames;
             bot["usec"].firstName = usecNames;
 
             logger.log(`[BotCallsigns] Loaded ${bearNames.length} BEAR and ${usecNames.length} USEC names!`, "green");
         } else {
-            const bearNames = this.bearNames['Names'];
-            const usecNames = this.usecNames['Names'];
+            bot["bear"].firstName = this.bearNames.Names;
+            bot["usec"].firstName = this.usecNames.Names;
 
-            bot["bear"].firstName = bearNames;
-            bot["usec"].firstName = usecNames;
-
-            logger.log(`[BotCallsigns] Loaded ${bearNames.length} BEAR and ${usecNames.length} USEC names!`, "green");
+            logger.log(`[BotCallsigns] Loaded ${this.bearNames.Names.length} BEAR and ${this.usecNames.Names.length} USEC names!`, "green");
         }
 
-        // Live Mode. Creating a file for Twitch Players mod (unfiltered).
+        // Live Mode handling
         if (config.liveMode) {
-            logger.log("[BotCallsigns | Live Mode] Live mode is ENABLED! Generating new file with names for Twitch Players. Mod will do this every server start up. Be careful as it will take longer for SPT Server to boot!", "yellow");
+            logger.log("[BotCallsigns | Live Mode] Live mode is ENABLED! Generating new file with names for Twitch Players.", "yellow");
 
-            const pathToFlag = "./user/mods/TTV-Players/temp/names.ready";
             const pathToTTVPlayers = "./user/mods/TTV-Players";
 
             if (fs.existsSync(pathToTTVPlayers)) {
-                const allNames = [...this.bearNames['Names'], ...this.usecNames['Names']];
+                const allNames = [...this.bearNames.Names, ...this.usecNames.Names];
 
                 const pathToAllNames = "./user/mods/TTV-Players/temp/names_temp.json";
                 fs.writeFile(pathToAllNames, JSON.stringify({ names: allNames }, null, 2), (err) => {
                     if (err) {
-                        logger.log("[BotCallsigns | Live Mode] Failed to write names_temp.json. Make sure Live Mode is also enabled for BotCallsigns", "red");
+                        logger.log("[BotCallsigns | Live Mode] Failed to write names_temp.json.", "red");
                         return;
                     }
-                    logger.log("[BotCallsigns | Live Mode] names_temp.json file for Twitch Players mod was updated successfully!", "cyan");
-                    fs.writeFile(pathToFlag, '', (err) => {
-                        if (err) {
-                            logger.log("[BotCallsigns | Live Mode] Error creating names.ready file for Twitch Players mod. Report this error to the developer!", "red");
-                            return;
-                        } else {
-                          logger.log("[BotCallsigns | Live Mode] Created flag for Twitch Players mod. Our file is ready!", "cyan");
-                        }
-                      });
+                    logger.log("[BotCallsigns | Live Mode] names_temp.json file was updated successfully!", "cyan");
                 });
             } else {
-                logger.log("[BotCallsigns | Live Mode] Couldn't find Twitch Players mod installed. BotCallsings will NOT work with Live Mode enabled. DISABLE it in the config or INSTALL Twitch Players mod!", "red");
+                logger.log("[BotCallsigns | Live Mode] Twitch Players mod is not installed. Live Mode will not function.", "red");
                 return;
             }
         }
 
-        // Load custom SCAV names if enabled.
-        if (config.useCustomScavNames) {
-
-            if(config.validateNames){
+        // If using SCAV names too
+        if(config.useCustomScavNames) {
+            if(config.validateNames) {
                 logger.log("[BotCallsigns] Validating SCAV names...", "green");
                 const scavFirstNames = validateNames(this.scavNames['firstNames'], "SCAV First Names", logger);
                 const scavLastNames = validateNames(this.scavNames['lastNames'], "SCAV Last Names", logger);

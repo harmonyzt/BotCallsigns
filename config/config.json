@@ -3,5 +3,6 @@
     "useCustomScavNames": false,
     "useBEARCyrillicNames": false,
     "useUSECEnglishNames": false,
+    "addExtraNames": false,
     "liveMode": false
 }
