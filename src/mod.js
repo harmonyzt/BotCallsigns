@@ -114,6 +114,9 @@ class BotNames {
                         logger.log("[BotCallsigns | Live Mode] Failed to write names_temp.json.", "red");
                         return;
                     }
+
+                    const pathToFlag = "./user/mods/TTV-Players/temp/names.ready";
+                    fs.writeFileSync(pathToFlag, '', 'utf-8');
                     logger.log("[BotCallsigns | Live Mode] names_temp.json file was updated successfully!", "cyan");
                 });
             } else {
