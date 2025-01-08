@@ -4,5 +4,5 @@
     "useBEARCyrillicNames": false,
     "useUSECEnglishNames": false,
     "addExtraNames": false,
-    "liveMode": true
+    "liveMode": false
 }
