@@ -56,7 +56,8 @@ class BotNames {
             if (invalidNames.length > 0) {
                 logger.log(`[BotCallsigns] ${type} names contain invalid name(s): ${invalidNames.join(", ")} | The mod will not use them. You can either fix, or ignore this.`, "yellow");
             } else {
-                logger.log(`[BotCallsigns] ${type} names passed name validation`, "green");
+                if(!config.junklessLogging)
+                    logger.log(`[BotCallsigns] ${type} names passed name validation`, "green");
             }
 
             return validNames;
@@ -84,7 +85,9 @@ class BotNames {
 
         // Name Validation if enabled in the config
         if (config.validateNames) {
-            logger.log("[BotCallsigns] Validating BEAR and USEC names...", "green");
+            if(!config.junklessLogging)
+                logger.log("[BotCallsigns] Validating BEAR and USEC names...", "green");
+            
             const bearNames = validateNames(this.bearNames.Names, "BEAR", logger);
             const usecNames = validateNames(this.usecNames.Names, "USEC", logger);
 

@@ -5,5 +5,5 @@
     "useUSECEnglishNames": false,
     "addExtraNames": false,
     "liveMode": false,
-    "junklessLogging": false
+    "junklessLogging": true
 }
