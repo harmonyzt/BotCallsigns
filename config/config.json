@@ -4,5 +4,6 @@
     "useBEARCyrillicNames": false,
     "useUSECEnglishNames": false,
     "addExtraNames": false,
-    "liveMode": false
+    "liveMode": false,
+    "junklessLogging": false
 }

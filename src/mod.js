@@ -26,7 +26,7 @@ class BotNames {
         // Check for extra name files and create them
         function createFileIfNotExists(path) {
             if (!fs.existsSync(path)) {
-                const defaultStructure = { "Names": ["names_goes", "goes_here"] };
+                const defaultStructure = { "Names": ["names_goes", "here"] };
                 try {
                     fs.writeFileSync(path, JSON.stringify(defaultStructure, null, 2));
                     logger.log(`[BotCallsigns] Created missing extra names file: ${path}`, "cyan");
@@ -91,12 +91,14 @@ class BotNames {
             bot["bear"].firstName = bearNames;
             bot["usec"].firstName = usecNames;
 
-            logger.log(`[BotCallsigns] Loaded ${bearNames.length} BEAR and ${usecNames.length} USEC names!`, "green");
+            if(!config.junklessLogging)
+                logger.log(`[BotCallsigns] Loaded ${bearNames.length} BEAR and ${usecNames.length} USEC names!`, "green");
         } else {
             bot["bear"].firstName = this.bearNames.Names;
             bot["usec"].firstName = this.usecNames.Names;
 
-            logger.log(`[BotCallsigns] Loaded ${this.bearNames.Names.length} BEAR and ${this.usecNames.Names.length} USEC names!`, "green");
+            if(!config.junklessLogging)
+                logger.log(`[BotCallsigns] Loaded ${this.bearNames.Names.length} BEAR and ${this.usecNames.Names.length} USEC names!`, "green");
         }
 
         // Live Mode handling
@@ -117,7 +119,9 @@ class BotNames {
 
                     const pathToFlag = "./user/mods/TTV-Players/temp/names.ready";
                     fs.writeFileSync(pathToFlag, '', 'utf-8');
-                    logger.log("[BotCallsigns | Live Mode] names_temp.json file was updated successfully!", "cyan");
+
+                    if(!config.junklessLogging)
+                        logger.log("[BotCallsigns | Live Mode] names_temp.json file was updated successfully!", "cyan");
                 });
             } else {
                 logger.log("[BotCallsigns | Live Mode] Twitch Players mod is not installed. Live Mode will not function.", "red");
@@ -128,7 +132,9 @@ class BotNames {
         // If using SCAV names too
         if(config.useCustomScavNames) {
             if(config.validateNames) {
-                logger.log("[BotCallsigns] Validating SCAV names...", "green");
+                if(!config.junklessLogging)
+                    logger.log("[BotCallsigns] Validating SCAV names...", "green");
+
                 const scavFirstNames = validateNames(this.scavNames['firstNames'], "SCAV First Names", logger);
                 const scavLastNames = validateNames(this.scavNames['lastNames'], "SCAV Last Names", logger);
 
@@ -137,7 +143,8 @@ class BotNames {
                     lastName: scavLastNames
                 });
 
-                logger.log(`[BotCallsigns] Loaded ${scavFirstNames.length} SCAV first names and ${scavLastNames.length} last names`, "green");
+                if(!config.junklessLogging)
+                    logger.log(`[BotCallsigns] Loaded ${scavFirstNames.length} SCAV first names and ${scavLastNames.length} last names`, "green");
             } else {
                 const scavFirstNames = this.scavNames['firstNames'];
                 const scavLastNames = this.scavNames['lastNames'];
@@ -147,7 +154,8 @@ class BotNames {
                     lastName: scavLastNames
                 });
 
-                logger.log(`[BotCallsigns] Loaded ${scavFirstNames.length} SCAV first names and ${scavLastNames.length} last names`, "green");
+                if(!config.junklessLogging)
+                    logger.log(`[BotCallsigns] Loaded ${scavFirstNames.length} SCAV first names and ${scavLastNames.length} last names`, "green");
             }
         }
     }
