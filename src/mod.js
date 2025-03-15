@@ -11,7 +11,6 @@ class BotNames {
         this.usecNames = this.CFG.useUSECEnglishNames
             ? require("../names/usec_en.json")
             : require("../names/usec.json");
-        this.scavNames = require("../config/scav_names.json");
     }
 
     postDBLoad(container) {
@@ -22,22 +21,33 @@ class BotNames {
 
         const extraUSECNamesPath = "./user/mods/BotCallsigns/config/usec_extra_names.json";
         const extraBEARNamesPath = "./user/mods/BotCallsigns/config/bear_extra_names.json";
+        const scavNames = "./user/mods/BotCallsigns/config/scav_names.json";
 
         // Check for extra name files and create them
-        function createFileIfNotExists(path) {
-            if (!fs.existsSync(path)) {
-                const defaultStructure = { "Names": ["names_goes", "here"] };
+        function createFileIfNotExists(path, scavFile = false) {
+            if (!fs.existsSync(path) && scavFile == false) {
+                const defaultStructure = { "Names": ["extra", "names", "go", "here"] };
+
                 try {
                     fs.writeFileSync(path, JSON.stringify(defaultStructure, null, 2));
                     logger.log(`[BotCallsigns] Created missing extra names file: ${path}`, "cyan");
                 } catch (error) {
-                    logger.log(`[BotCallsigns] Failed to create file: ${path}`, "red");
+                    logger.log(`[BotCallsigns] Failed to create file: ${path} $`, "red");
+                }
+            } else if (!fs.existsSync(path) && scavFile == true) {
+                const defaultStructure = { "firstNames": ["put", "your", "first names", "here", "or", "add", "more"], "lastNames": ["put", "your", "last names", "here", "or", "add", "more"] };
+                try {
+                    fs.writeFileSync(path, JSON.stringify(defaultStructure, null, 2));
+                    logger.log(`[BotCallsigns] Created missing extra names file: ${path}`, "cyan");
+                } catch (error) {
+                    logger.log(`[BotCallsigns] Failed to create file: ${path} $`, "red");
                 }
             }
         }
 
-        createFileIfNotExists(extraUSECNamesPath);
-        createFileIfNotExists(extraBEARNamesPath);
+        createFileIfNotExists(extraUSECNamesPath, false);
+        createFileIfNotExists(extraBEARNamesPath, false);
+        createFileIfNotExists(scavNames, true);
 
         // Name validation
         function validateNames(names, type) {
@@ -56,7 +66,7 @@ class BotNames {
             if (invalidNames.length > 0) {
                 logger.log(`[BotCallsigns] ${type} names contain invalid name(s): ${invalidNames.join(", ")} | The mod will not use them. You can either fix, or ignore this.`, "yellow");
             } else {
-                if(!config.junklessLogging)
+                if (!config.junklessLogging)
                     logger.log(`[BotCallsigns] ${type} names passed name validation`, "green");
             }
 
@@ -78,29 +88,29 @@ class BotNames {
             return defaultNames;
         }
 
-        if(config.addExtraNames){
+        if (config.addExtraNames) {
             this.bearNames.Names = loadExtraNames(extraBEARNamesPath, this.bearNames.Names, "BEAR", logger);
             this.usecNames.Names = loadExtraNames(extraUSECNamesPath, this.usecNames.Names, "USEC", logger);
         }
 
         // Name Validation if enabled in the config
         if (config.validateNames) {
-            if(!config.junklessLogging)
+            if (!config.junklessLogging)
                 logger.log("[BotCallsigns] Validating BEAR and USEC names...", "green");
-            
+
             const bearNames = validateNames(this.bearNames.Names, "BEAR", logger);
             const usecNames = validateNames(this.usecNames.Names, "USEC", logger);
 
             bot["bear"].firstName = bearNames;
             bot["usec"].firstName = usecNames;
 
-            if(!config.junklessLogging)
+            if (!config.junklessLogging)
                 logger.log(`[BotCallsigns] Loaded ${bearNames.length} BEAR and ${usecNames.length} USEC names!`, "green");
         } else {
             bot["bear"].firstName = this.bearNames.Names;
             bot["usec"].firstName = this.usecNames.Names;
 
-            if(!config.junklessLogging)
+            if (!config.junklessLogging)
                 logger.log(`[BotCallsigns] Loaded ${this.bearNames.Names.length} BEAR and ${this.usecNames.Names.length} USEC names!`, "green");
         }
 
@@ -123,7 +133,7 @@ class BotNames {
                     const pathToFlag = "./user/mods/TTV-Players/temp/names.ready";
                     fs.writeFileSync(pathToFlag, '', 'utf-8');
 
-                    if(!config.junklessLogging)
+                    if (!config.junklessLogging)
                         logger.log("[BotCallsigns | Live Mode] names_temp.json file was updated successfully!", "cyan");
                 });
             } else {
@@ -133,10 +143,12 @@ class BotNames {
         }
 
         // If using SCAV names too
-        if(config.useCustomScavNames) {
-            if(config.validateNames) {
-                if(!config.junklessLogging)
+        if (config.useCustomScavNames) {
+            if (config.validateNames) {
+                if (!config.junklessLogging)
                     logger.log("[BotCallsigns] Validating SCAV names...", "green");
+
+                this.scavNames = require("../config/scav_names.json");
 
                 const scavFirstNames = validateNames(this.scavNames['firstNames'], "SCAV First Names", logger);
                 const scavLastNames = validateNames(this.scavNames['lastNames'], "SCAV Last Names", logger);
@@ -146,7 +158,7 @@ class BotNames {
                     lastName: scavLastNames
                 });
 
-                if(!config.junklessLogging)
+                if (!config.junklessLogging)
                     logger.log(`[BotCallsigns] Loaded ${scavFirstNames.length} SCAV first names and ${scavLastNames.length} last names`, "green");
             } else {
                 const scavFirstNames = this.scavNames['firstNames'];
@@ -157,7 +169,7 @@ class BotNames {
                     lastName: scavLastNames
                 });
 
-                if(!config.junklessLogging)
+                if (!config.junklessLogging)
                     logger.log(`[BotCallsigns] Loaded ${scavFirstNames.length} SCAV first names and ${scavLastNames.length} last names`, "green");
             }
         }
