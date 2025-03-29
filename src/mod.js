@@ -22,9 +22,11 @@ class BotNames {
         const extraUSECNamesPath = "./user/mods/BotCallsigns/config/usec_extra_names.json";
         const extraBEARNamesPath = "./user/mods/BotCallsigns/config/bear_extra_names.json";
         const scavNames = "./user/mods/BotCallsigns/config/scav_names.json";
+        const pathToTwitchPlayers = "./user/mods/TwitchPlayers";
 
         // Check for extra name files and create them
-        function createFileIfNotExists(path, scavFile = false) {
+        function createFileIfNotExists(path, scavFile = false, ModReady = false) {
+
             if (!fs.existsSync(path) && scavFile == false) {
                 const defaultStructure = { "Names": ["extra", "names", "go", "here"] };
 
@@ -43,11 +45,26 @@ class BotNames {
                     logger.log(`[BotCallsigns] Failed to create file: ${path} $`, "red");
                 }
             }
+
+            // Create mod.ready file for Twitch Players signaling that we're done with file creation
+            if (ModReady == true) {
+                modReadyTTV();
+            }
         }
 
-        createFileIfNotExists(extraUSECNamesPath, false);
-        createFileIfNotExists(extraBEARNamesPath, false);
-        createFileIfNotExists(scavNames, true);
+        createFileIfNotExists(extraUSECNamesPath, false, false);
+        createFileIfNotExists(extraBEARNamesPath, false, false);
+        createFileIfNotExists(scavNames, true, true);
+
+        // Mod is ready to work with Twitch Players
+        function modReadyTTV() {
+            if(fs.existsSync(pathToTwitchPlayers)){
+                const pathToFlag = "./user/mods/TwitchPlayers/temp/mod.ready";
+                fs.writeFileSync(pathToFlag, '', 'utf-8');
+            } else {
+                logger.log(`[BotCallsigns] Created missing extra names file: ${path}`, "cyan");
+            }
+        }
 
         // Name validation
         function validateNames(names, type) {
@@ -112,34 +129,6 @@ class BotNames {
 
             if (!config.junklessLogging)
                 logger.log(`[BotCallsigns] Loaded ${this.bearNames.Names.length} BEAR and ${this.usecNames.Names.length} USEC names!`, "green");
-        }
-
-        // Live Mode handling
-        if (config.liveMode) {
-            logger.log("[BotCallsigns | Live Mode] Live mode is ENABLED! Generating new file with names for Twitch Players.", "yellow");
-
-            const pathToTTVPlayers = "./user/mods/TTV-Players";
-
-            if (fs.existsSync(pathToTTVPlayers)) {
-                const allNames = [...this.bearNames.Names, ...this.usecNames.Names];
-
-                const pathToAllNames = "./user/mods/TTV-Players/temp/names_temp.json";
-                fs.writeFile(pathToAllNames, JSON.stringify({ names: allNames }, null, 2), (err) => {
-                    if (err) {
-                        logger.log("[BotCallsigns | Live Mode] Failed to write names_temp.json.", "red");
-                        return;
-                    }
-
-                    const pathToFlag = "./user/mods/TTV-Players/temp/names.ready";
-                    fs.writeFileSync(pathToFlag, '', 'utf-8');
-
-                    if (!config.junklessLogging)
-                        logger.log("[BotCallsigns | Live Mode] names_temp.json file was updated successfully!", "cyan");
-                });
-            } else {
-                logger.log("[BotCallsigns | Live Mode] Twitch Players mod is not installed. Live Mode will not function.", "red");
-                return;
-            }
         }
 
         // If using SCAV names too
