@@ -61,8 +61,6 @@ class BotNames {
             if(fs.existsSync(pathToTwitchPlayers)){
                 const pathToFlag = "./user/mods/TwitchPlayers/temp/mod.ready";
                 fs.writeFileSync(pathToFlag, '', 'utf-8');
-            } else {
-                logger.log(`[BotCallsigns] Created missing extra names file: ${path}`, "cyan");
             }
         }
 
