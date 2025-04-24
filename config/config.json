@@ -1,5 +1,5 @@
 {
-    "validateNames": true,
+    "validateNames": false,
     "useCustomScavNames": false,
     "useBEARCyrillicNames": false,
     "useUSECEnglishNames": false,
