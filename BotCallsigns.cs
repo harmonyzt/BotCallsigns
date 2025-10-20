@@ -25,35 +25,56 @@ public record ModMetadata : AbstractModMetadata
 }
 
 [Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 1)]
-public class EditBotNames(
-    ISptLogger<EditBotNames> logger,
-    DatabaseService databaseService,
-    ModHelper modHelper)
+public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService databaseService, ModHelper modHelper)
     : IOnLoad
 {
-
     public Task OnLoad()
     {
         var namesPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
         var currentPath = Path.Combine(namesPath, "nameData/");
-        
         var usecNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentPath, "usec.json");
         var bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentPath, "bear.json");
-
         EditNames(usecNames.Names, bearNames.Names);
+        logger.Success(
+            $"[Bot Callsigns] Loaded {usecNames.Names.Count()} USEC names and {bearNames.Names.Count()} BEAR names");
 
-        logger.Success($"[Bot Callsigns] Loaded {usecNames.Names.Count()} USEC names and {bearNames.Names.Count()} BEAR names");
-
+        // Signal to Twitch Players that it is ready
+        ModReadyTwitchPlayers();
         return Task.CompletedTask;
     }
 
-    private void EditNames( List<string> newUsecNames, List<string> newBearNames )
+    private void EditNames(List<string> newUsecNames, List<string> newBearNames)
     {
         var botTypes = databaseService.GetBots().Types;
         var usecBots = botTypes.FirstOrDefault(v => v.Key == "usec").Value;
         var bearBots = botTypes.FirstOrDefault(v => v.Key == "bear").Value;
-        
         usecBots!.FirstNames = newUsecNames;
         bearBots!.FirstNames = newBearNames;
+    }
+
+    // Solely for debugging (for now)(im learning ok)
+    private void ModReadyTwitchPlayers()
+    {
+        try
+        {
+            var serverPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
+            var pathToTwitchPlayers = Path.Combine(serverPath, "/../TwitchPlayers");
+            if (!Directory.Exists(pathToTwitchPlayers)) return;
+            var tempDir = Path.Combine(pathToTwitchPlayers, "temp");
+
+            // Create directory there if it doesn't exist yet
+            if (!Directory.Exists(tempDir))
+            {
+                Directory.CreateDirectory(tempDir);
+            }
+
+            var pathToFlag = Path.Combine(tempDir, "mod.ready");
+            File.WriteAllText(pathToFlag, string.Empty);
+            logger.Info("[Bot Callsigns] Twitch Players was detected");
+        }
+        catch (Exception ex)
+        {
+            logger.Warning($"[Bot Callsigns] Could not send signal file for Twitch Players: {ex.Message}");
+        }
     }
 }
