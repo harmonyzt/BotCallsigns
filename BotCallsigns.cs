@@ -31,16 +31,57 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
     public Task OnLoad()
     {
         var namesPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
-        var currentPath = Path.Combine(namesPath, "nameData/");
-        var usecNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentPath, "usec.json");
-        var bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentPath, "bear.json");
+        var currentNamesPath = Path.Combine(namesPath, "nameData/");
+    
+        // Assign our custom names from JSON
+        var usecNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "usec.json");
+        var bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "bear.json");
+    
+        // If our all names JSON file doesn't exist, create it along all the names there, otherwise skip if already exists
+        CreateAllNames(currentNamesPath, usecNames, bearNames);
+    
+        // Apply names in SPT Database
         EditNames(usecNames.Names, bearNames.Names);
         logger.Success(
-            $"[Bot Callsigns] Loaded {usecNames.Names.Count()} USEC names and {bearNames.Names.Count()} BEAR names");
+            $"[Bot Callsigns] Loaded {usecNames.Names.Count} USEC names and {bearNames.Names.Count} BEAR names");
 
         // Signal to Twitch Players that it is ready
         ModReadyTwitchPlayers();
         return Task.CompletedTask;
+    }
+
+    private void CreateAllNames(string namesPath, BotCallsignsNames usecNames, BotCallsignsNames bearNames)
+    {
+        try
+        {
+            var allNamesFilePath = Path.Combine(namesPath, "allNames.json");
+            
+            if (File.Exists(allNamesFilePath))
+            {
+                return;
+            }
+        
+            // Combine the names
+            var allNames = new List<string>();
+            allNames.AddRange(usecNames.Names);
+            allNames.AddRange(bearNames.Names);
+            
+            var allNamesData = new BotCallsignsNames { Names = allNames };
+            
+            var jsonContent = System.Text.Json.JsonSerializer.Serialize(allNamesData, new System.Text.Json.JsonSerializerOptions 
+            { 
+                WriteIndented = true 
+            });
+    
+            // Save
+            File.WriteAllText(allNamesFilePath, jsonContent);
+    
+            logger.Info($"[Bot Callsigns] Created allNames.json with {allNames.Count} total names");
+        }
+        catch (Exception ex)
+        {
+            logger.Warning($"[Bot Callsigns] Could not create allNames.json: {ex.Message}");
+        }
     }
 
     private void EditNames(List<string> newUsecNames, List<string> newBearNames)
@@ -52,25 +93,54 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
         bearBots!.FirstNames = newBearNames;
     }
 
-    // Solely for debugging (for now)(im learning ok)
+    // Send a signal file to TwitchPlayers if that exists
     private void ModReadyTwitchPlayers()
     {
         try
         {
-            var serverPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
-            var pathToTwitchPlayers = Path.Combine(serverPath, "/../TwitchPlayers");
-            if (!Directory.Exists(pathToTwitchPlayers)) return;
-            var tempDir = Path.Combine(pathToTwitchPlayers, "temp");
+            // Get TwitchPlayers mod Directory
+            var currentModPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
 
-            // Create directory there if it doesn't exist yet
+            // Check if directory of TwitchPlayers Exist
+            var modsDirectory = Directory.GetParent(currentModPath)?.FullName;
+            
+            if (modsDirectory == null)
+            {
+                logger.Warning("[Bot Callsigns] Directory of TwitchPlayers mod could not be found.");
+                return;
+            }
+            
+            // Path to TwitchPlayers
+            var pathToTwitchPlayers = Path.Combine(modsDirectory, "TwitchPlayers");
+            
+            if (!Directory.Exists(pathToTwitchPlayers))
+            {
+                logger.Warning("[Bot Callsigns] Directory of TwitchPlayers mod could not be found.");
+                return;
+            }
+        
+            var tempDir = Path.Combine(pathToTwitchPlayers, "Temp/");
+
+            // Create directory inside Twitch Players
             if (!Directory.Exists(tempDir))
             {
                 Directory.CreateDirectory(tempDir);
             }
 
             var pathToFlag = Path.Combine(tempDir, "mod.ready");
-            File.WriteAllText(pathToFlag, string.Empty);
-            logger.Info("[Bot Callsigns] Twitch Players was detected");
+
+            if (File.Exists(pathToFlag))
+            {
+                logger.Warning("[Bot Callsigns] Flag for Twitch Players already exists, skipping...");
+                return;
+            }
+            else
+            {
+                // Write mod.ready to twitch players to pick it up
+                File.WriteAllText(pathToFlag, string.Empty);
+            }
+            
+            logger.Info("[Bot Callsigns] Synced with TwitchPlayers");
         }
         catch (Exception ex)
         {
