@@ -1,11 +1,14 @@
 using System.Reflection;
+using System.Text.Json;
 using BotCallsigns.Models;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Spt.Mod;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Services;
+using Path = System.IO.Path;
 
 namespace BotCallsigns;
 
@@ -28,6 +31,9 @@ public record ModMetadata : AbstractModMetadata
 public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService databaseService, ModHelper modHelper)
     : IOnLoad
 {
+    private UserDefinedBotCallsignNames? _userDefinedBotCallsignNames;
+    private static readonly JsonSerializerOptions _jsonSerializerOptions = new() { WriteIndented = true };
+    
     public Task OnLoad()
     {
         var namesPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
@@ -36,18 +42,33 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
         // Assign our custom names from JSON
         var usecNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "usec.json");
         var bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "bear.json");
-    
+        _userDefinedBotCallsignNames = FetchOrCreateUserDefinedNames(currentNamesPath);
         // If our all names JSON file doesn't exist, create it along all the names there, otherwise skip if already exists
         CreateAllNames(currentNamesPath, usecNames, bearNames);
-    
-        // Apply names in SPT Database
-        EditNames(usecNames.Names, bearNames.Names);
-        logger.Success(
-            $"[Bot Callsigns] Loaded {usecNames.Names.Count} USEC names and {bearNames.Names.Count} BEAR names");
+        
+        var botTypes = databaseService.GetBots().Types;
+        var usecBots = botTypes.FirstOrDefault(v => v.Key == "usec").Value;
+        var bearBots = botTypes.FirstOrDefault(v => v.Key == "bear").Value;
+
+        if (usecBots != null) { PushCallsignsToBotType(usecBots, usecNames.Names, _userDefinedBotCallsignNames.USECNames); }
+        if (bearBots != null) { PushCallsignsToBotType(bearBots, bearNames.Names, _userDefinedBotCallsignNames.BEARNames); }
+        
+        logger.Success($"[Bot Callsigns] Loaded {usecNames.Names.Count + _userDefinedBotCallsignNames.USECNames.Count} USEC names and {bearNames.Names.Count + _userDefinedBotCallsignNames.BEARNames.Count} BEAR names");
 
         // Signal to Twitch Players that it is ready
         ModReadyTwitchPlayers();
         return Task.CompletedTask;
+    }
+
+    private UserDefinedBotCallsignNames FetchOrCreateUserDefinedNames(string path)
+    {
+        if (File.Exists($"{path}/userDefinedNames.json"))
+        {
+            return modHelper.GetJsonDataFromFile<UserDefinedBotCallsignNames>(path, "userDefinedNames.json");
+        }
+        var json = JsonSerializer.Serialize(new UserDefinedBotCallsignNames(), _jsonSerializerOptions);
+        File.WriteAllText($"{path}/userDefinedNames.json", json);
+        return modHelper.GetJsonDataFromFile<UserDefinedBotCallsignNames>(path, "userDefinedNames.json");
     }
 
     private void CreateAllNames(string namesPath, BotCallsignsNames usecNames, BotCallsignsNames bearNames)
@@ -68,10 +89,7 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
             
             var allNamesData = new BotCallsignsNames { Names = allNames };
             
-            var jsonContent = System.Text.Json.JsonSerializer.Serialize(allNamesData, new System.Text.Json.JsonSerializerOptions 
-            { 
-                WriteIndented = true 
-            });
+            var jsonContent = JsonSerializer.Serialize(allNamesData, _jsonSerializerOptions);
     
             // Save
             File.WriteAllText(allNamesFilePath, jsonContent);
@@ -84,13 +102,22 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
         }
     }
 
-    private void EditNames(List<string> newUsecNames, List<string> newBearNames)
+    private void PushCallsignsToBotType(BotType botType, List<string> callsigns, List<string>? userDefinedCallsigns)
     {
-        var botTypes = databaseService.GetBots().Types;
-        var usecBots = botTypes.FirstOrDefault(v => v.Key == "usec").Value;
-        var bearBots = botTypes.FirstOrDefault(v => v.Key == "bear").Value;
-        usecBots!.FirstNames = newUsecNames;
-        bearBots!.FirstNames = newBearNames;
+        var firstNames = botType.FirstNames;
+        foreach (var callsign in callsigns)
+        {
+            if (firstNames.Contains(callsign)) continue;
+            firstNames.Add(callsign);
+        }
+
+        if (userDefinedCallsigns == null) return;
+        
+        foreach (var callsign in userDefinedCallsigns)
+        {
+            if (firstNames.Contains(callsign)) continue;
+            firstNames.Add(callsign);
+        }
     }
 
     // Send a signal file to TwitchPlayers if that exists
