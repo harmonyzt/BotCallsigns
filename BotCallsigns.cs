@@ -18,7 +18,7 @@ public record ModMetadata : AbstractModMetadata
     public override string Name { get; init; } = "Bot Callsigns";
     public override string Author { get; init; } = "harmony";
     public override List<string>? Contributors { get; init; } = ["yuyui.moe", "Helldiver"];
-    public override SemanticVersioning.Version Version { get; init; } = new("2.0.2");
+    public override SemanticVersioning.Version Version { get; init; } = new("2.0.3");
     public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
     public override List<string>? Incompatibilities { get; init; }
     public override Dictionary<string, SemanticVersioning.Range>? ModDependencies { get; init; }
@@ -133,7 +133,8 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
             
             if (modsDirectory == null)
             {
-                logger.Warning("[Bot Callsigns] Directory of TwitchPlayers mod could not be found.");
+                // Do nothing - otherwise proceed
+                // logger.Warning("[Bot Callsigns] Directory of TwitchPlayers mod could not be found.");
                 return;
             }
             
@@ -167,11 +168,11 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
                 File.WriteAllText(pathToFlag, string.Empty);
             }
             
-            logger.Info("[Bot Callsigns] Synced with TwitchPlayers");
+            logger.Success("[Bot Callsigns] Synced with TwitchPlayers!");
         }
         catch (Exception ex)
         {
-            logger.Warning($"[Bot Callsigns] Could not send signal file for Twitch Players: {ex.Message}");
+            logger.Error($"[Bot Callsigns] Could not send signal file for Twitch Players: {ex.Message}");
         }
     }
 }
