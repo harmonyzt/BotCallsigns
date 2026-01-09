@@ -40,8 +40,8 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
         var currentNamesPath = Path.Combine(namesPath, "nameData/");
     
         // Assign our custom names from JSON
-        var usecNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "usec.json");
-        var bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "bear.json");
+        var usecNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "usec_new.json");
+        var bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "bear_new.json");
         _userDefinedBotCallsignNames = FetchOrCreateUserDefinedNames(currentNamesPath);
         // If our all names JSON file doesn't exist, create it along all the names there, otherwise skip if already exists
         CreateAllNames(currentNamesPath, usecNames, bearNames);
