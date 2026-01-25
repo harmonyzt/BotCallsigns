@@ -18,7 +18,7 @@ public record ModMetadata : AbstractModMetadata
     public override string Name { get; init; } = "Bot Callsigns";
     public override string Author { get; init; } = "harmony";
     public override List<string>? Contributors { get; init; } = ["yuyui.moe", "Helldiver"];
-    public override SemanticVersioning.Version Version { get; init; } = new("2.0.3");
+    public override SemanticVersioning.Version Version { get; init; } = new("2.0.4");
     public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
     public override List<string>? Incompatibilities { get; init; }
     public override Dictionary<string, SemanticVersioning.Range>? ModDependencies { get; init; }
@@ -32,32 +32,80 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
     : IOnLoad
 {
     private UserDefinedBotCallsignNames? _userDefinedBotCallsignNames;
-    private static readonly JsonSerializerOptions _jsonSerializerOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new() { WriteIndented = true };
+    private static readonly TimeSpan AllNamesUpdateInterval = TimeSpan.FromHours(100);
+    
+    // Config
+    private ModConfig? _config;
     
     public Task OnLoad()
     {
-        var namesPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
-        var currentNamesPath = Path.Combine(namesPath, "nameData/");
+        var modPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
+        var currentNamesPath = Path.Combine(modPath, "nameData/");
+        _config = LoadOrCreateConfig(modPath);
     
-        // Assign our custom names from JSON
-        var usecNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "usec_new.json");
-        var bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "bear_new.json");
-        _userDefinedBotCallsignNames = FetchOrCreateUserDefinedNames(currentNamesPath);
-        // If our all names JSON file doesn't exist, create it along all the names there, otherwise skip if already exists
-        CreateAllNames(currentNamesPath, usecNames, bearNames);
+        // Assign our names
+        BotCallsignsNames usecNames = new BotCallsignsNames();
+        BotCallsignsNames bearNames = new BotCallsignsNames();
+        
+        usecNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "usec_new.json");
+        bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "bear_new.json");
+        
+        // Custom names
+        if (_config.EnableUserDefinedNames)
+        {
+            _userDefinedBotCallsignNames = FetchOrCreateUserDefinedNames(currentNamesPath);
+        }
+        
+        // If our all names JSON file doesn't exist, create it along all the names there
+        if (_config.AutoGenerateAllNames)
+        {
+            CreateAllNames(currentNamesPath, usecNames, bearNames);
+        }
         
         var botTypes = databaseService.GetBots().Types;
         var usecBots = botTypes.FirstOrDefault(v => v.Key == "usec").Value;
         var bearBots = botTypes.FirstOrDefault(v => v.Key == "bear").Value;
 
-        if (usecBots != null) { PushCallsignsToBotType(usecBots, usecNames.Names, _userDefinedBotCallsignNames.USECNames); }
-        if (bearBots != null) { PushCallsignsToBotType(bearBots, bearNames.Names, _userDefinedBotCallsignNames.BEARNames); }
+        if (usecBots != null) { PushCallsignsToBotType(usecBots, usecNames.Names, _userDefinedBotCallsignNames.UsecNames); }
+        if (bearBots != null) { PushCallsignsToBotType(bearBots, bearNames.Names, _userDefinedBotCallsignNames.BearNames); }
         
-        logger.Success($"[Bot Callsigns] Loaded {usecNames.Names.Count + _userDefinedBotCallsignNames.USECNames.Count} USEC names and {bearNames.Names.Count + _userDefinedBotCallsignNames.BEARNames.Count} BEAR names");
+        logger.Success($"[Bot Callsigns] Loaded {usecNames.Names.Count + _userDefinedBotCallsignNames.UsecNames.Count} USEC names and {bearNames.Names.Count + _userDefinedBotCallsignNames.BearNames.Count} BEAR names");
 
         // Signal to Twitch Players that it is ready
         ModReadyTwitchPlayers();
         return Task.CompletedTask;
+    }
+    
+    private ModConfig LoadOrCreateConfig(string modPath)
+    {
+        var configPath = Path.Combine(modPath, "config.json");
+        
+        try
+        {
+            if (File.Exists(configPath))
+            {
+                var json = File.ReadAllText(configPath);
+                var config = JsonSerializer.Deserialize<ModConfig>(json, JsonSerializerOptions);
+                if (config != null)
+                {
+                    return config;
+                }
+            }
+            
+            var defaultConfig = new ModConfig();
+            var defaultJson = JsonSerializer.Serialize(defaultConfig, JsonSerializerOptions);
+            File.WriteAllText(configPath, defaultJson);
+            
+            logger.Success($"[Bot Callsigns] Created default config file at {configPath}");
+            
+            return defaultConfig;
+        }
+        catch (Exception ex)
+        {
+            logger.Error($"[Bot Callsigns] Error loading config: {ex.Message}. Using defaults.");
+            return new ModConfig(); // fallback to default config
+        }
     }
 
     private UserDefinedBotCallsignNames FetchOrCreateUserDefinedNames(string path)
@@ -66,7 +114,7 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
         {
             return modHelper.GetJsonDataFromFile<UserDefinedBotCallsignNames>(path, "userDefinedNames.json");
         }
-        var json = JsonSerializer.Serialize(new UserDefinedBotCallsignNames(), _jsonSerializerOptions);
+        var json = JsonSerializer.Serialize(new UserDefinedBotCallsignNames(), JsonSerializerOptions);
         File.WriteAllText($"{path}/userDefinedNames.json", json);
         return modHelper.GetJsonDataFromFile<UserDefinedBotCallsignNames>(path, "userDefinedNames.json");
     }
@@ -77,7 +125,21 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
         {
             var allNamesFilePath = Path.Combine(namesPath, "allNames.json");
             
+            bool shouldUpdate = true;
+            
             if (File.Exists(allNamesFilePath))
+            {
+                var fileInfo = new FileInfo(allNamesFilePath);
+                var timeSinceLastUpdate = DateTime.Now - fileInfo.LastWriteTime;
+                
+                if (timeSinceLastUpdate < AllNamesUpdateInterval)
+                {
+                    shouldUpdate = false;
+                    //logger.Info($"[Bot Callsigns] allNames.json was updated {timeSinceLastUpdate.TotalHours:F1} hours ago, skipping update.");
+                }
+            }
+            
+            if (!shouldUpdate)
             {
                 return;
             }
@@ -87,36 +149,55 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
             allNames.AddRange(usecNames.Names);
             allNames.AddRange(bearNames.Names);
             
+            // And also user custom names
+            if (_userDefinedBotCallsignNames?.UsecNames != null)
+                allNames.AddRange(_userDefinedBotCallsignNames.UsecNames);
+            
+            if (_userDefinedBotCallsignNames?.BearNames != null)
+                allNames.AddRange(_userDefinedBotCallsignNames.BearNames);
+            
+            allNames = allNames.Distinct().ToList();
+            
             var allNamesData = new BotCallsignsNames { Names = allNames };
             
-            var jsonContent = JsonSerializer.Serialize(allNamesData, _jsonSerializerOptions);
-    
-            // Save
+            var jsonContent = JsonSerializer.Serialize(allNamesData, JsonSerializerOptions);
+
             File.WriteAllText(allNamesFilePath, jsonContent);
-    
-            logger.Info($"[Bot Callsigns] Created allNames.json with {allNames.Count} total names");
+
+            logger.Info($"[Bot Callsigns] Created/Updated allNames.json with {allNames.Count} total names");
         }
         catch (Exception ex)
         {
-            logger.Warning($"[Bot Callsigns] Could not create allNames.json: {ex.Message}");
+            logger.Warning($"[Bot Callsigns] Could not create/update allNames.json: {ex.Message}");
         }
     }
 
-    private void PushCallsignsToBotType(BotType botType, List<string> callsigns, List<string>? userDefinedCallsigns)
+    private void PushCallsignsToBotType(BotType botType, List<string> defaultCallsigns, List<string>? userDefinedCallsigns)
     {
         var firstNames = botType.FirstNames;
-        foreach (var callsign in callsigns)
-        {
-            if (firstNames.Contains(callsign)) continue;
-            firstNames.Add(callsign);
-        }
-
-        if (userDefinedCallsigns == null) return;
         
-        foreach (var callsign in userDefinedCallsigns)
+        
+        if (!_config.IncludeDefaultNames)
         {
-            if (firstNames.Contains(callsign)) continue;
-            firstNames.Add(callsign);
+            firstNames.Clear();
+        }
+        
+        if (defaultCallsigns != null)
+        {
+            foreach (var callsign in defaultCallsigns)
+            {
+                if (firstNames.Contains(callsign)) continue;
+                firstNames.Add(callsign);
+            }
+        }
+        
+        if (_config.EnableUserDefinedNames && userDefinedCallsigns != null)
+        {
+            foreach (var callsign in userDefinedCallsigns)
+            {
+                if (firstNames.Contains(callsign)) continue;
+                firstNames.Add(callsign);
+            }
         }
     }
 

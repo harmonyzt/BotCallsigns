@@ -2,6 +2,6 @@
 
 public class UserDefinedBotCallsignNames
 {
-    public List<string> USECNames { get; set; } = [];
-    public List<string> BEARNames { get; set; } = [];
+    public List<string> UsecNames { get; set; } = [];
+    public List<string> BearNames { get; set; } = [];
 }
