@@ -1,34 +1,37 @@
 using System.Reflection;
 using System.Text.Json;
 using BotCallsigns.Models;
+using SPTarkov.Common.Models.Logging;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
-using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Helpers.Server;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Spt.Mod;
-using SPTarkov.Server.Core.Models.Utils;
-using SPTarkov.Server.Core.Services;
+using SPTarkov.Server.Core.Models.Spt.Tables;
 using Path = System.IO.Path;
+using Range = SemanticVersioning.Range;
+using Version = SemanticVersioning.Version;
 
 namespace BotCallsigns;
 
-public record ModMetadata : AbstractModMetadata
+public sealed class BotCallsignsMetadata : IModMetadata
 {
-    public override string ModGuid { get; init; } = "com.harmonyzt.botcallsigns";
-    public override string Name { get; init; } = "Bot Callsigns";
-    public override string Author { get; init; } = "harmony";
-    public override List<string>? Contributors { get; init; } = ["yuyui.moe", "Helldiver"];
-    public override SemanticVersioning.Version Version { get; init; } = new("2.0.4");
-    public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
-    public override List<string>? Incompatibilities { get; init; }
-    public override Dictionary<string, SemanticVersioning.Range>? ModDependencies { get; init; }
-    public override string? Url { get; init; }
-    public override bool? IsBundleMod { get; init; }
-    public override string License { get; init; } = "MIT";
+    public string ModGuid { get; init; } = "com.harmonyzt.botcallsigns";
+    public string Name { get; init; } = "Bot Callsigns";
+    public Range SptVersion { get; init; } = new("~4.1.1");
+    public string Author { get; init; } = "harmony";
+    public List<string>? Contributors { get; init; } = ["yuyui.moe", "Helldiver"];
+    public Version Version { get; init; } = new("2.0.5");
+    public bool HasPrepatcher { get; init; }
+    public List<string>? Incompatibilities { get; init; }
+    public Dictionary<string, SemanticVersioning.Range>? ModDependencies { get; init; }
+    public string? Url { get; init; } = "https://github.com/harmonyzt/BotCallsigns";
+    public bool? IsBundleMod { get; init; }
+    public string License { get; init; } = "MIT";
 }
 
-[Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 1)]
-public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService databaseService, ModHelper modHelper)
+[Injectable(TypePriority = OnLoadOrder.PostLoad + 1)]
+public class EditBotNames(ISptLogger<EditBotNames> logger, BotTable botTable, ModHelper modHelper)
     : IOnLoad
 {
     private UserDefinedBotCallsignNames? _userDefinedBotCallsignNames;
@@ -38,12 +41,12 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
     // Config
     private ModConfig? _config;
     
-    public Task OnLoad()
+    public Task OnLoadAsync(CancellationToken cancellationToken)
     {
         var modPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
         var currentNamesPath = Path.Combine(modPath, "nameData/");
         _config = LoadOrCreateConfig(modPath);
-    
+
         // Assign our names
         BotCallsignsNames usecNames = new BotCallsignsNames();
         BotCallsignsNames bearNames = new BotCallsignsNames();
@@ -51,10 +54,15 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
         usecNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "usec_new.json");
         bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "bear_new.json");
         
+        // Log how many names were loaded from files
+        logger.Info($"[Bot Callsigns] Loaded {usecNames.Names.Count} USEC names from file");
+        logger.Info($"[Bot Callsigns] Loaded {bearNames.Names.Count} BEAR names from file");
+        
         // Custom names
         if (_config.EnableUserDefinedNames)
         {
             _userDefinedBotCallsignNames = FetchOrCreateUserDefinedNames(currentNamesPath);
+            logger.Info($"[Bot Callsigns] User defined names: {_userDefinedBotCallsignNames?.UsecNames?.Count ?? 0} USEC, {_userDefinedBotCallsignNames?.BearNames?.Count ?? 0} BEAR");
         }
         
         // If our all names JSON file doesn't exist, create it along all the names there
@@ -62,15 +70,22 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
         {
             CreateAllNames(currentNamesPath, usecNames, bearNames);
         }
-        
-        var botTypes = databaseService.GetBots().Types;
-        var usecBots = botTypes.FirstOrDefault(v => v.Key == "usec").Value;
-        var bearBots = botTypes.FirstOrDefault(v => v.Key == "bear").Value;
 
-        if (usecBots != null) { PushCallsignsToBotType(usecBots, usecNames.Names, _userDefinedBotCallsignNames.UsecNames); }
-        if (bearBots != null) { PushCallsignsToBotType(bearBots, bearNames.Names, _userDefinedBotCallsignNames.BearNames); }
+        var botTypes = botTable.Types;
+        botTypes.TryGetValue("usec", out var usecBots);
+        botTypes.TryGetValue("bear", out var bearBots);
         
-        logger.Success($"[Bot Callsigns] Loaded {usecNames.Names.Count + _userDefinedBotCallsignNames.UsecNames.Count} USEC names and {bearNames.Names.Count + _userDefinedBotCallsignNames.BearNames.Count} BEAR names");
+        if (usecBots != null)
+        {
+            PushCallsignsToBotType(usecBots, usecNames.Names, _userDefinedBotCallsignNames?.UsecNames);
+        }
+        
+        if (bearBots != null)
+        {
+            PushCallsignsToBotType(bearBots, bearNames.Names, _userDefinedBotCallsignNames?.BearNames);
+        }
+        
+        logger.Success($"[Bot Callsigns] Added {usecNames.Names.Count + (_userDefinedBotCallsignNames?.UsecNames?.Count ?? 0)} USEC names and {bearNames.Names.Count + (_userDefinedBotCallsignNames?.BearNames?.Count ?? 0)} BEAR names");
 
         // Signal to Twitch Players that it is ready
         ModReadyTwitchPlayers();
@@ -176,7 +191,6 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
     {
         var firstNames = botType.FirstNames;
         
-        
         if (!_config.IncludeDefaultNames)
         {
             firstNames.Clear();
@@ -224,7 +238,7 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, DatabaseService datab
             
             if (!Directory.Exists(pathToTwitchPlayers))
             {
-                logger.Warning("[Bot Callsigns] Directory of TwitchPlayers mod could not be found.");
+                // logger.Warning("[Bot Callsigns] Directory of TwitchPlayers mod could not be found.");
                 return;
             }
         
