@@ -18,10 +18,10 @@ public sealed class BotCallsignsMetadata : IModMetadata
 {
     public string ModGuid { get; init; } = "com.harmonyzt.botcallsigns";
     public string Name { get; init; } = "Bot Callsigns";
-    public Range SptVersion { get; init; } = new("~4.1.1");
+    public Range SptVersion { get; init; } = new("~4.1.3");
     public string Author { get; init; } = "harmony";
     public List<string>? Contributors { get; init; } = ["yuyui.moe", "Helldiver"];
-    public Version Version { get; init; } = new("2.0.5");
+    public Version Version { get; init; } = new("2.0.6");
     public bool HasPrepatcher { get; init; }
     public List<string>? Incompatibilities { get; init; }
     public Dictionary<string, SemanticVersioning.Range>? ModDependencies { get; init; }
@@ -55,14 +55,14 @@ public class EditBotNames(ISptLogger<EditBotNames> logger, BotTable botTable, Mo
         bearNames = modHelper.GetJsonDataFromFile<BotCallsignsNames>(currentNamesPath, "bear_new.json");
         
         // Log how many names were loaded from files
-        logger.Info($"[Bot Callsigns] Loaded {usecNames.Names.Count} USEC names from file");
-        logger.Info($"[Bot Callsigns] Loaded {bearNames.Names.Count} BEAR names from file");
+        //logger.Info($"[Bot Callsigns] Loaded {usecNames.Names.Count} USEC names from file");
+        //logger.Info($"[Bot Callsigns] Loaded {bearNames.Names.Count} BEAR names from file");
         
         // Custom names
         if (_config.EnableUserDefinedNames)
         {
             _userDefinedBotCallsignNames = FetchOrCreateUserDefinedNames(currentNamesPath);
-            logger.Info($"[Bot Callsigns] User defined names: {_userDefinedBotCallsignNames?.UsecNames?.Count ?? 0} USEC, {_userDefinedBotCallsignNames?.BearNames?.Count ?? 0} BEAR");
+            // .logger.Info($"[Bot Callsigns] User defined names: {_userDefinedBotCallsignNames?.UsecNames?.Count ?? 0} USEC, {_userDefinedBotCallsignNames?.BearNames?.Count ?? 0} BEAR");
         }
         
         // If our all names JSON file doesn't exist, create it along all the names there
